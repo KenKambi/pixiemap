@@ -1,0 +1,19 @@
+{
+  "name": "pixiemap-makueni",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Digital Pixie mandarin orchard registry and decision-support dashboard for Makueni County, Kenya.",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "serve": "npx --yes serve . -l 5173",
+    "build:standalone": "node tools/build-standalone.mjs"
+  },
+  "dependencies": {
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.38.0"
+  },
+  "license": "MIT"
+}

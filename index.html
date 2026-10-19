@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PixieMap Makueni — Orchard Registry &amp; Decision Support</title>
+<meta name="description" content="Digital Pixie mandarin orchard registry for Makueni County: farmer mapping, tree inventory, yield forecasting, AI crop screening and county planning dashboards.">
+<meta name="theme-color" content="#0A2A5E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍊</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<!-- sticky application bar -->
+<header class="topbar">
+  <div class="brandmark" aria-hidden="true">🍊</div>
+  <div class="brandtxt"><b>PixieMap Makueni</b><span>Orchard registry &amp; decision support</span></div>
+  <nav class="seg" role="group" aria-label="Portal">
+    <button id="pfarmer" aria-pressed="true">Farmer portal</button>
+    <button id="pcounty" aria-pressed="false">County government</button>
+  </nav>
+  <div class="spacer"></div>
+  <div class="chip" id="whochip"></div>
+  <div class="chip season">Season <select id="season"><option>2026</option></select></div>
+  <button class="iconbtn" id="theme" title="Switch light / dark theme" aria-label="Switch theme">◐</button>
+  <button class="iconbtn" id="resetdemo" title="Reset demo data" aria-label="Reset demo data">⟲</button>
+</header>
+
+<div class="shell">
+  <nav class="side" id="side" aria-label="Sections"></nav>
+  <main class="content" id="view"></main>
+</div>
+
+<footer class="foot">
+  PixieMap Makueni · demonstration register · AI output is advisory and confirmed by county extension officers ·
+  ward boundaries: Makueni County, 30 wards · basemaps: OpenStreetMap contributors, Esri World Imagery
+</footer>
+
+<!-- libraries (pinned) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<!-- data -->
+<script src="data/makueni-wards.js"></script>
+<script src="data/seed-orchards.js"></script>
+
+<!-- application -->
+<script src="assets/js/config.js"></script>
+<script src="assets/js/state.js"></script>
+<script src="assets/js/map.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/ai.js"></script>
+<script src="assets/js/reports.js"></script>
+<script src="assets/js/views-farmer.js"></script>
+<script src="assets/js/views-county.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
