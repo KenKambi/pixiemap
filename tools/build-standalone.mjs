@@ -19,7 +19,7 @@ html = html.replace('<link rel="stylesheet" href="assets/css/styles.css">',
 const scripts = [
   "data/makueni-wards.js", "data/seed-orchards.js",
   "assets/js/config.js", "assets/js/state.js", "assets/js/map.js", "assets/js/charts.js",
-  "assets/js/ai.js", "assets/js/reports.js", "assets/js/views-farmer.js",
+  "assets/js/ai.js", "assets/js/mapimage.js", "assets/js/reports.js", "assets/js/views-farmer.js",
   "assets/js/views-county.js", "assets/js/app.js"
 ];
 for (const s of scripts) {
@@ -29,6 +29,10 @@ for (const s of scripts) {
 // inline the photographs
 for (const img of ["assets/img/orchard-hero.jpg", "assets/img/bloom-hero.jpg"]) {
   html = html.split(img).join(`data:image/jpeg;base64,${b64(img)}`);
+}
+for (const png of ["assets/img/makueni-logo.png", "assets/img/icha.png",
+                   "assets/img/kenya-red-cross.png", "assets/img/british-red-cross.png"]) {
+  html = html.split(png).join(`data:image/png;base64,${b64(png)}`);
 }
 
 mkdirSync(resolve(root, "dist"), { recursive: true });

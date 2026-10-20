@@ -8,7 +8,7 @@
     farmer:[["f_dash","▦","Dashboard"],["f_orch","🌳","My orchards &amp; trees"],["f_map","✎","Map a new orchard"],
             ["f_spray","🗓","Spray programme"],["f_diag","🔬","AI crop check"],["f_bot","💬","Ask PixieBot"],
             ["f_mkt","🛒","Market &amp; agrovets"],["f_sms","📱","SMS / USSD view"]],
-    county:[["c_over","▦","County overview"],["c_ward","📊","Ward statistics"],["c_fore","📈","Production forecast"],
+    county:[["c_over","▦","County overview"],["c_ward","📊","Ward statistics"],["c_comp","⚖","Compare wards"],["c_fore","📈","Production forecast"],
             ["c_surv","⚠","Pest surveillance"],["c_plan","🎯","Subsidy &amp; extension planning"],["c_rep","📄","Reports (PDF)"]]
   };
   const VIEWS = Object.assign({}, PM.farmer.views, PM.county.views);
@@ -34,12 +34,20 @@
       : `Signed in as <b style="margin-left:4px">County Agriculture Officer</b>`;
   }
 
-  function render(){
+  function render(scrollTo){
     PM.charts.destroyAll();
     PM.map.destroyAll();
     drawNav();
     document.getElementById("view").innerHTML = (VIEWS[St.S.section] || VIEWS.f_dash)();
-    window.scrollTo({ top:0, behavior:"instant" in window ? "instant" : "auto" });
+    if(scrollTo){
+      requestAnimationFrame(() => {
+        const el = document.getElementById(scrollTo);
+        if(el) el.scrollIntoView({ behavior:"smooth", block:"center" });
+        else window.scrollTo({ top:0 });
+      });
+    } else {
+      window.scrollTo({ top:0 });
+    }
     const mesel = document.getElementById("mesel");
     if(mesel) mesel.onchange = () => { St.S.me = mesel.value; St.save(); render(); };
     document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));

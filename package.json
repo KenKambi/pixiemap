@@ -12,8 +12,5 @@
   "dependencies": {
     "openai": "^4.77.0"
   },
-  "devDependencies": {
-    "netlify-cli": "^17.38.0"
-  },
   "license": "MIT"
 }

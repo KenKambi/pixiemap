@@ -15,8 +15,8 @@ Built for the Kenya Red Cross Society / ICHA Digital Innovation Challenge (IFSL-
 |---|---|
 | Dashboard | Forecast, tree count, next action in the spray programme, plot on satellite imagery |
 | My orchards and trees | Editable tree counts and planting years, with density checks against the mapped area |
-| Map a new orchard | Trace the boundary on imagery or walk it by GPS; area, acreage and ward detected automatically; consent recorded; export to GeoJSON |
-| Spray programme | Stage-by-stage schedule generated from the orchard's own flowering date |
+| Map a new orchard | Drawing is on by default — tap the corners on satellite imagery, or walk the boundary by GPS; area, acreage and ward detected automatically; consent recorded; export to GeoJSON |
+| Spray programme | Full 8-month, 4-phase crop-protection schedule from the orchard's own flowering date, with the active ingredients to apply at each step. Steps unlock one at a time and the page scrolls to the next one as each is ticked |
 | AI crop check | Photo or description in, likely issue + confidence out; low-confidence or high-risk cases escalate to an officer |
 | Ask PixieBot | Domain-bounded assistant in English, Kiswahili and Kikamba |
 | Market and agrovets | Ward-level volumes for buyers, map of licensed agrovets and their stock |
@@ -27,10 +27,11 @@ Built for the Kenya Red Cross Society / ICHA Digital Innovation Challenge (IFSL-
 |---|---|
 | County overview | KPIs plus a ward choropleth (forecast kg, trees, kg/tree, trees under 3 years) and coverage gaps |
 | Ward statistics | All 30 wards, sortable and filterable by sub-county, CSV export |
+| Compare wards | Two to six wards side by side: grouped bars, a six-axis radar profile, productivity and age-mix charts, and a best-in-row table |
 | Production forecast | Harvest window, tree-age profile, volume coming into bearing |
 | Pest surveillance | Report queue with AI confidence, officer assignment, mapped cases |
 | Subsidy and extension planning | Need score per ward with recommended support and a dispatch list |
-| Reports | Four PDF reports generated in the browser (county production, ward profile, surveillance, priority list) |
+| Reports | Four PDF reports generated in the browser, each with the county coat of arms and a rendered ward map (county production, ward profile, surveillance, priority list) |
 
 ### The yield model
 
@@ -75,12 +76,14 @@ assets/js/state.js             state store, yield engine, ward aggregation
 assets/js/map.js               Leaflet: OSM / OSM-HOT / Esri imagery, choropleth, drawing, geometry
 assets/js/charts.js            Chart.js helpers (theme aware)
 assets/js/ai.js                serverless client with graceful fallbacks
+assets/js/mapimage.js          canvas ward-map renderer used by the PDF reports
 assets/js/reports.js           jsPDF + autoTable report builder
 assets/js/views-farmer.js      farmer portal
 assets/js/views-county.js      county portal
 assets/js/app.js               routing, navigation, theming, shortcuts
 data/makueni-wards.js|.geojson 30 ward boundaries (simplified to ~130 m) with sub-county and area
 data/seed-orchards.js          24 demonstration orchards generated inside real ward polygons
+assets/img/makueni-logo.png    Government of Makueni County coat of arms
 netlify/functions/pixiebot.js  chat assistant (OpenRouter, server side)
 netlify/functions/diagnose.js  crop screening, JSON out, vision-capable model
 tools/build-standalone.mjs     inlines everything into a single HTML file
@@ -109,6 +112,7 @@ Both functions share one principle: **the model is bounded, and the human decide
 - **Safety first.** Protective equipment whenever spraying comes up; bee safety during flowering.
 - **Escalation.** Screening results under 75% confidence, or flagged high risk (suspected citrus greening/HLB, false codling moth, fruit fly), are held for officer confirmation before advice reaches the farmer.
 - **Keys stay server-side.** The browser never sees `OPENROUTER_API_KEY`.
+- **No single point of failure.** `diagnose.js` tries a list of vision models in order, retries without JSON mode if a provider rejects it, and reports the real reason if every attempt fails. Photos are downscaled to 1024 px in the browser before upload, so a phone picture never hits Netlify's request size limit.
 
 Models are swappable through `PIXIEBOT_MODEL` and `DIAGNOSE_MODEL`.
 

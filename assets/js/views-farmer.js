@@ -63,11 +63,11 @@ window.PM = window.PM || {};
 
   /* ---------------- map a new orchard ---------------- */
   function mapper(){
-    return head("Map a new orchard","Trace the plot on satellite imagery, or walk the boundary with the phone's GPS. A Pixie Champion can do this for a farmer who has no smartphone.") +
+    return head("Map a new orchard","Drawing is already switched on: tap each corner of the plot on the satellite image, or walk the boundary with the phone's GPS. A Pixie Champion can do this for a farmer who has no smartphone.") +
     banner + `
     <div class="card">
       <div class="maptools">
-        <button class="btn sm" id="dStart">Start drawing</button>
+        <button class="btn sm green" id="dStart">Drawing on — click each corner</button>
         <button class="btn ghost sm" id="dUndo">Undo corner</button>
         <button class="btn ghost sm" id="dClear">Clear</button>
         <button class="btn ghost sm" id="dGps">Walk boundary (GPS)</button>
@@ -91,20 +91,57 @@ window.PM = window.PM || {};
     </div>`;
   }
 
-  /* ---------------- spray programme ---------------- */
+  /* ---------------- spray programme (sequential) ---------------- */
   function spray(){
     const st = St.sprayStages();
-    return head("Spray programme","Driven by this orchard's flowering date, not a fixed calendar. On basic phones each step arrives as an SMS or voice note in Kikamba.") + `
+    const done = St.S.done;
+    // the first stage that is not yet ticked is the only one the farmer can act on
+    const currentIdx = st.findIndex(x => !done.includes(x.key));
+    const started = !!St.S.flowering;
+    const finished = currentIdx === -1;
+    const pct = Math.round(done.length / st.length * 100);
+
+    const phaseHead = p => `<div class="phasehead" style="border-left-color:${p.colour}">
+        <b style="color:${p.colour}">${p.name}</b><span>${p.window}</span></div>`;
+
+    let html = "", lastPhase = null;
+    st.forEach((s0, i) => {
+      const ph = PM.SPRAY_PHASES.find(p => p.id === s0.phase);
+      if(ph && ph.id !== lastPhase){ html += phaseHead(ph); lastPhase = ph.id; }
+      const isDone = done.includes(s0.key);
+      const isCurrent = i === currentIdx;
+      const locked = !isDone && !isCurrent;
+      if(locked){
+        html += `<div class="step locked"><h4>🔒 Step ${i+1} — locked</h4>
+          <div class="meta">Opens once step ${i} is marked done</div></div>`;
+        return;
+      }
+      html += `<div class="step ${isDone ? "done" : "current"}" id="stage-${s0.key}">
+        <h4>${isDone ? "✓ " : ""}Step ${i+1} · ${s0.title}</h4>
+        <div class="meta">Day ${s0.day} after flowering · ${s0.when}${ph ? " · " + ph.name : ""}</div>
+        <p style="margin:6px 0">${s0.body}</p>
+        <div class="chem"><b>What to apply</b><ul>${s0.chemicals.map(c => `<li>${c}</li>`).join("")}</ul></div>
+        <p class="note warn" style="margin-top:8px">${s0.safety}</p>
+        ${isCurrent ? `<div class="row" style="margin-top:10px">
+            <button class="btn green" data-done="${s0.key}">Mark this step done</button>
+            ${i > 0 ? `<button class="btn ghost sm" data-undo="${st[i-1].key}">Reopen previous step</button>` : ""}
+          </div>` : ""}
+      </div>`;
+    });
+
+    return head("Spray and crop-protection programme",
+      "One full Pixie season — about eight months from the first open flower to harvest, in four phases. Steps unlock one at a time, so nobody skips ahead.") + `
     <div class="card"><div class="row">
       <div style="flex:1;min-width:230px"><label for="bd">Date flowering started</label><input type="date" id="bd" value="${St.S.flowering || ""}"></div>
-      <button class="btn" id="bset" style="margin-top:18px">${St.S.flowering ? "Update" : "Start programme"}</button>
-      ${St.S.flowering ? `<button class="btn ghost" id="breset" style="margin-top:18px">Reset</button>` : ""}</div>
-      ${St.S.flowering ? `<div class="timeline" style="margin-top:18px">${st.map(s => `
-        <div class="step ${St.S.done.includes(s.key) ? "" : "todo"}">
-          <h4>${s.title}</h4><div class="meta">Day ${s.day} · ${s.when}</div><div>${s.body}</div>
-          <div style="margin-top:6px"><button class="btn ghost sm" data-done="${s.key}">${St.S.done.includes(s.key) ? "Mark not done" : "Mark done"}</button></div>
-        </div>`).join("")}</div>` : `<p class="note">Enter the flowering date to generate the schedule.</p>`}
-      <p class="note warn">Demonstration schedule. In the pilot every step is validated by county agricultural officers and names only PCPB-registered products, with dosage, PPE and pre-harvest intervals.</p></div>`;
+      <button class="btn" id="bset" style="margin-top:18px">${started ? "Change date" : "Start programme"}</button>
+      ${started ? `<button class="btn ghost" id="breset" style="margin-top:18px">Reset programme</button>` : ""}
+    </div>
+    ${started ? `<div class="progwrap"><div class="progbar"><div class="progfill" style="width:${pct}%"></div></div>
+        <span class="sub">${done.length} of ${st.length} steps done${finished ? " — season complete 🎉" : ""}</span></div>` : ""}
+    </div>
+    ${started ? `<div class="card"><div class="timeline">${html}</div>
+      <p class="note warn">Products are named by active ingredient and chemical group, never by brand. Use a PCPB-registered product for citrus, follow the label rate, rotate chemical groups between seasons, and observe every pre-harvest interval. County agricultural officers validate this schedule before the pilot.</p></div>`
+      : `<div class="card"><p class="note">Enter the date flowering started and the eight-month programme is generated for this orchard. On a basic phone the same steps arrive as SMS or voice notes in Kikamba.</p></div>`}`;
   }
 
   /* ---------------- AI crop check ---------------- */
@@ -183,7 +220,7 @@ Reply 4 to ask a question.</div></div>
   }
 
   /* ========================= interactions ========================= */
-  let draft = [], drawOn = false, dLayer = null, gpsWatch = null, history = [];
+  let draft = [], drawOn = true, dLayer = null, gpsWatch = null, history = [];
 
   function wire(section, ui){
     if(section === "f_dash"){ M.make("m_fdash"); M.orchards("m_fdash",[St.me()]); }
@@ -203,11 +240,23 @@ Reply 4 to ask a question.</div></div>
       const b = document.getElementById("bset");
       if(b) b.onclick = () => { St.S.flowering = document.getElementById("bd").value || null; St.save(); ui.render(); };
       const r = document.getElementById("breset");
-      if(r) r.onclick = () => { St.S.flowering = null; St.S.done = []; St.save(); ui.render(); };
+      if(r) r.onclick = () => {
+        if(!confirm("Reset the programme and clear every tick?")) return;
+        St.S.flowering = null; St.S.done = []; St.save(); ui.render();
+      };
+      // ticking a step unlocks the next one and scrolls straight to it
       document.querySelectorAll("[data-done]").forEach(x => x.onclick = () => {
         const k = x.dataset.done;
-        St.S.done = St.S.done.includes(k) ? St.S.done.filter(y => y !== k) : [...St.S.done, k];
-        St.save(); ui.render();
+        if(!St.S.done.includes(k)) St.S.done = [...St.S.done, k];
+        St.save();
+        const stages = St.sprayStages();
+        const next = stages.find(s0 => !St.S.done.includes(s0.key));
+        ui.render(next ? "stage-" + next.key : null);
+        ui.toast(next ? "Step done — next step unlocked" : "Season complete. Record your harvest next.");
+      });
+      document.querySelectorAll("[data-undo]").forEach(x => x.onclick = () => {
+        St.S.done = St.S.done.filter(y => y !== x.dataset.undo);
+        St.save(); ui.render("stage-" + x.dataset.undo);
       });
     }
 
@@ -241,16 +290,21 @@ Reply 4 to ask a question.</div></div>
   function wireDraw(ui){
     const m = M.make("m_draw"); M.fitWards("m_draw");
     M.orchards("m_draw", St.S.orchards, { color:"#F5A623", weight:1, fillOpacity:.22 });
-    draft = []; redraw();
+    draft = []; drawOn = true; redraw();
     const info = document.getElementById("dInfo");
+    const startBtn = document.getElementById("dStart");
+    startBtn.textContent = "Drawing on — click each corner";
+    startBtn.classList.add("green");
+    ui.toast("Drawing is on: tap each corner of the plot on the satellite image");
 
     m.map.on("click", e => { if(!drawOn) return;
       draft.push([+e.latlng.lng.toFixed(5), +e.latlng.lat.toFixed(5)]); redraw(); });
 
-    document.getElementById("dStart").onclick = () => {
+    startBtn.onclick = () => {
       drawOn = !drawOn;
-      document.getElementById("dStart").textContent = drawOn ? "Drawing — click the corners" : "Start drawing";
-      ui.toast(drawOn ? "Click each corner of the plot on the map" : "Drawing paused");
+      startBtn.textContent = drawOn ? "Drawing on — click each corner" : "Drawing paused — tap to resume";
+      startBtn.classList.toggle("green", drawOn);
+      ui.toast(drawOn ? "Drawing on: tap each corner of the plot" : "Drawing paused — pan and zoom freely");
     };
     document.getElementById("dUndo").onclick = () => { draft.pop(); redraw(); };
     document.getElementById("dClear").onclick = () => { draft = []; redraw(); };
@@ -324,6 +378,8 @@ Reply 4 to ask a question.</div></div>
   }
 
   /* ---------- AI handlers ---------- */
+  const escHtml = s0 => String(s0).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
   async function runDiagnosis(ui){
     const st = document.getElementById("dStatus"), out = document.getElementById("dOut");
     const text = document.getElementById("sym").value.trim(), file = document.getElementById("ph").files[0];
@@ -332,14 +388,29 @@ Reply 4 to ask a question.</div></div>
     st.innerHTML = '<span class="spinner"></span> screening…'; out.innerHTML = "";
     const r = await PM.ai.diagnose({ description:text, file, ward });
     st.textContent = "";
-    if(r.offline){ out.innerHTML = `<p class="note warn">The screening service needs its backend. Run <code>netlify dev</code> or deploy with an OPENROUTER_API_KEY and this returns a live result.</p>`; return; }
+    if(r.offline){
+      out.innerHTML = `<div class="card" style="margin:0;border-left:4px solid var(--orange)">
+        <h3>Screening unavailable</h3>
+        <p class="hint">${r.error ? escHtml(r.error) : "The screening service did not respond."}</p>
+        <p class="note warn">Check that <code>OPENROUTER_API_KEY</code> is set on the deployment, that the OpenRouter account has credit, and that <code>DIAGNOSE_MODEL</code> names a vision-capable model. The farmer's case can still be sent to an extension officer.</p>
+        <button class="btn ghost sm" id="escalate">Send to an extension officer instead</button></div>`;
+      const b = document.getElementById("escalate");
+      if(b) b.onclick = () => {
+        const p2 = St.wardIndex[ward].properties;
+        St.S.reports.unshift({ id:"r"+Date.now(), ward, issue:(text || "Photo submitted, not yet identified"),
+          confidence:0, status:"pending", when:"just now", lng:p2.cx, lat:p2.cy });
+        St.save(); ui.toast("Case sent to the county surveillance queue");
+      };
+      return;
+    }
     const conf = Math.round(r.confidence || 0), esc = conf < 75 || r.highRisk;
     out.innerHTML = `<div class="card" style="margin:0;border-left:4px solid ${esc ? "var(--orange)" : "var(--green)"}">
       <h3>${r.issue || "Not identified"}</h3>
       <p><span class="tag ${esc ? "w" : "g"}">confidence ${conf}%</span> ${r.highRisk ? '<span class="tag r">high risk</span>' : ""}</p>
       <p class="hint">${r.signs || ""}</p><p><b>What to do:</b> ${r.action || ""}</p>
       ${esc ? `<p class="note warn">Held for county extension officer confirmation before the farmer acts. It is now in the surveillance queue.</p>`
-            : `<p class="note">Advice delivered to the farmer and the case mapped for county early warning.</p>`}</div>`;
+            : `<p class="note">Advice delivered to the farmer and the case mapped for county early warning.</p>`}
+      ${r.model ? `<p class="sub" style="margin-top:6px">Screened by ${escHtml(r.model)}</p>` : ""}</div>`;
     const p = St.wardIndex[ward].properties;
     St.S.reports.unshift({ id:"r"+Date.now(), ward, issue:r.issue || "Unidentified", confidence:conf,
       status: esc ? "pending" : "advised", when:"just now", lng:p.cx, lat:p.cy });

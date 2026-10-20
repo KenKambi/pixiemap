@@ -17,8 +17,8 @@
 
 <!-- sticky application bar -->
 <header class="topbar">
-  <div class="brandmark" aria-hidden="true">🍊</div>
-  <div class="brandtxt"><b>PixieMap Makueni</b><span>Orchard registry &amp; decision support</span></div>
+  <img class="brandmark" src="assets/img/makueni-logo.png" alt="Government of Makueni County coat of arms">
+  <div class="brandtxt"><b>PixieMap Makueni</b><span>Government of Makueni County · orchard registry</span></div>
   <nav class="seg" role="group" aria-label="Portal">
     <button id="pfarmer" aria-pressed="true">Farmer portal</button>
     <button id="pcounty" aria-pressed="false">County government</button>
@@ -36,8 +36,16 @@
 </div>
 
 <footer class="foot">
-  PixieMap Makueni · demonstration register · AI output is advisory and confirmed by county extension officers ·
-  ward boundaries: Makueni County, 30 wards · basemaps: OpenStreetMap contributors, Esri World Imagery
+  <div class="partners">
+    <span class="plab">An initiative of</span>
+    <img class="plogo" src="assets/img/makueni-logo.png" alt="Government of Makueni County">
+    <img class="plogo" src="assets/img/icha.png" alt="International Center for Humanitarian Affairs">
+    <img class="plogo" src="assets/img/kenya-red-cross.png" alt="Kenya Red Cross Society">
+    <img class="plogo" src="assets/img/british-red-cross.png" alt="British Red Cross">
+  </div>
+  <p>PixieMap Makueni · developed for the KRCS / ICHA Digital Innovation Challenge under the IFSL-Makueni project, funded by British Red Cross ·
+     demonstration register · AI output is advisory and confirmed by county extension officers ·
+     ward boundaries: Makueni County, 30 wards · basemaps: OpenStreetMap contributors, Esri World Imagery</p>
 </footer>
 
 <!-- libraries (pinned) -->
@@ -56,6 +64,7 @@
 <script src="assets/js/map.js"></script>
 <script src="assets/js/charts.js"></script>
 <script src="assets/js/ai.js"></script>
+<script src="assets/js/mapimage.js"></script>
 <script src="assets/js/reports.js"></script>
 <script src="assets/js/views-farmer.js"></script>
 <script src="assets/js/views-county.js"></script>

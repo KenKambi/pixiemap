@@ -22,7 +22,7 @@ window.PM = window.PM || {};
         {id:"r2", ward:"Mbooni",  issue:"Citrus leaf miner",            confidence:91, status:"advised",  when:"5 days ago"},
         {id:"r3", ward:"Kalawa",  issue:"Water stress / fruit drop",    confidence:83, status:"assigned", when:"6 days ago"}
       ].map(r => ({...r, lng:wardIndex[r.ward].properties.cx, lat:wardIndex[r.ward].properties.cy})),
-      flowering:null, done:[], me:"o01", portal:"farmer", section:"f_dash", theme:null
+      flowering:null, done:[], compare:[], me:"o01", portal:"farmer", section:"f_dash", theme:null
     };
   }
 

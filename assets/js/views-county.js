@@ -59,6 +59,40 @@ window.PM = window.PM || {};
     <div class="card"><h3>Trees and forecast side by side</h3><div class="chartbox" style="height:340px"><canvas id="ch_ward"></canvas></div></div>`;
   }
 
+
+  /* ---------------- ward comparison ---------------- */
+  function compare(){
+    const active = St.activeWards().sort((a,b) => b.kg - a.kg);
+    const sel = (St.S.compare && St.S.compare.length) ? St.S.compare : active.slice(0,3).map(w => w.ward);
+    return head("Compare wards",
+      "Put any two to six wards side by side on the measures that drive subsidy, extension and aggregation decisions.") + `
+    <div class="card"><h3>Choose wards</h3>
+      <p class="hint">Pick between two and six. Only wards with registered orchards can be compared.</p>
+      <div class="wardpick" id="wpick">
+        ${active.map(w => `<label class="${sel.includes(w.ward) ? "on" : ""}">
+            <input type="checkbox" value="${w.ward}" ${sel.includes(w.ward) ? "checked" : ""}> ${w.ward}</label>`).join("")}
+      </div>
+      <div class="row"><button class="btn ghost sm" id="cmpTop">Top 3 by volume</button>
+        <button class="btn ghost sm" id="cmpNeed">Top 3 by need score</button>
+        <button class="btn ghost sm" id="cmpClear">Clear</button></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>Trees and forecast volume</h3><div class="chartbox" style="height:320px"><canvas id="cmp_bar"></canvas></div></div>
+      <div class="card"><h3>Profile across six measures</h3>
+        <p class="hint">Each axis is scaled against the highest of the selected wards, so the shape shows relative strengths.</p>
+        <div class="chartbox" style="height:320px"><canvas id="cmp_radar"></canvas></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>Productivity: kg per tree</h3><div class="chartbox" style="height:280px"><canvas id="cmp_perTree"></canvas></div></div>
+      <div class="card"><h3>Orchard age mix</h3>
+        <p class="hint">Trees under three years are not yielding yet; they are next season's volume.</p>
+        <div class="chartbox" style="height:280px"><canvas id="cmp_age"></canvas></div></div>
+    </div>
+    <div class="card"><h3>Side by side</h3>
+      <div class="scroll"><table id="cmpTable"></table></div>
+      <div id="cmpVerdict"></div></div>`;
+  }
+
   function forecast(){
     return head("Production forecast","What is coming, when it arrives, and what is still growing into bearing.") + `
     <div class="grid g2">
@@ -154,6 +188,7 @@ window.PM = window.PM || {};
     }
 
     if(section === "c_ward") wireWardTable(ui);
+    if(section === "c_comp") wireCompare(ui);
 
     if(section === "c_fore"){
       const c = C.colors(), total = St.county().kg;
@@ -191,6 +226,130 @@ window.PM = window.PM || {};
                          document.getElementById("rfor").value, out);
       };
     }
+  }
+
+
+  function wireCompare(ui){
+    const pick = document.getElementById("wpick");
+    const selected = () => [...pick.querySelectorAll("input:checked")].map(i => i.value);
+
+    const paint = () => {
+      const names = selected();
+      pick.querySelectorAll("label").forEach(l => l.classList.toggle("on", l.querySelector("input").checked));
+      St.S.compare = names; St.save();
+      const rows = St.priorityRows().filter(w => names.includes(w.ward));
+      const c = PM.charts.colors();
+      PM.charts.destroyAll();
+
+      if(rows.length < 2){
+        document.getElementById("cmpTable").innerHTML =
+          `<tr><td class="hint">Select at least two wards to compare.</td></tr>`;
+        document.getElementById("cmpVerdict").innerHTML = "";
+        return;
+      }
+
+      PM.charts.add("cmp_bar", { type:"bar",
+        data:{ labels: rows.map(r => r.ward), datasets:[
+          { label:"Trees", data: rows.map(r => r.trees), backgroundColor:c.blue, yAxisID:"y" },
+          { label:"Forecast kg", data: rows.map(r => r.kg), backgroundColor:c.green, yAxisID:"y1" }] },
+        options:{ ...PM.charts.base(), scales:{ ...PM.charts.base().scales,
+          y:{ ...PM.charts.base().scales.y, position:"left" },
+          y1:{ ...PM.charts.base().scales.y, position:"right", grid:{ drawOnChartArea:false } } } } });
+
+      const axes = [
+        ["Forecast kg",      r => r.kg],
+        ["Trees",            r => r.trees],
+        ["kg per tree",      r => r.perTree],
+        ["Irrigation %",     r => r.irrShare * 100],
+        ["Orchard hectares", r => r.ha],
+        ["Young trees",      r => r.young]
+      ];
+      const maxima = axes.map(([, f]) => Math.max(1, ...rows.map(f)));
+      const palette = [c.green, c.blue, c.orange, "#6B3FA0", "#0E7C86", "#B3261E"];
+      PM.charts.add("cmp_radar", { type:"radar",
+        data:{ labels: axes.map(a => a[0]),
+          datasets: rows.map((r,i) => ({
+            label:r.ward,
+            data: axes.map(([, f], j) => Math.round(f(r) / maxima[j] * 100)),
+            borderColor: palette[i % palette.length],
+            backgroundColor: palette[i % palette.length] + "33",
+            borderWidth:2, pointRadius:3 })) },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ labels:{ color:c.ink } },
+            tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.r}% of the best here` } } },
+          scales:{ r:{ beginAtZero:true, max:100,
+            grid:{ color:c.line }, angleLines:{ color:c.line },
+            pointLabels:{ color:c.ink, font:{ size:12 } }, ticks:{ display:false } } } } });
+
+      PM.charts.add("cmp_perTree", { type:"bar",
+        data:{ labels: rows.map(r => r.ward),
+          datasets:[{ label:"kg per tree", data: rows.map(r => +r.perTree.toFixed(1)), backgroundColor:c.orange }] },
+        options:{ ...PM.charts.base(), indexAxis:"y" } });
+
+      PM.charts.add("cmp_age", { type:"bar",
+        data:{ labels: rows.map(r => r.ward), datasets:[
+          { label:"Bearing trees (3 yrs +)", data: rows.map(r => r.trees - r.young), backgroundColor:c.green, stack:"a" },
+          { label:"Trees under 3 yrs",       data: rows.map(r => r.young),           backgroundColor:c.orange, stack:"a" }] },
+        options:{ ...PM.charts.base(), scales:{ ...PM.charts.base().scales,
+          x:{ ...PM.charts.base().scales.x, stacked:true }, y:{ ...PM.charts.base().scales.y, stacked:true } } } });
+
+      const metrics = [
+        ["Sub-county",            r => r.sub,                         null],
+        ["Registered orchards",   r => r.n,                           "max"],
+        ["Trees",                 r => St.fmt(r.trees),               "max"],
+        ["Orchard hectares",      r => r.ha.toFixed(2),               "max"],
+        ["Forecast kg",           r => St.fmt(r.kg),                  "max"],
+        ["kg per tree",           r => r.perTree.toFixed(1),          "max"],
+        ["Trees under 3 yrs",     r => St.fmt(r.young),               null],
+        ["Irrigated farms",       r => Math.round(r.irrShare*100)+"%","max"],
+        ["Women-registered plots",r => r.women,                       null],
+        ["Need score",            r => r.score,                       "min"]
+      ];
+      const best = {
+        max: f => Math.max(...rows.map(f)),
+        min: Math.min
+      };
+      document.getElementById("cmpTable").innerHTML =
+        `<thead><tr><th>Measure</th>${rows.map(r => `<th class="n">${r.ward}</th>`).join("")}</tr></thead><tbody>` +
+        metrics.map(([label, fn, dir]) => {
+          const raw = rows.map(r => {
+            if(label === "Need score") return r.score;
+            if(label === "kg per tree") return r.perTree;
+            if(label === "Forecast kg") return r.kg;
+            if(label === "Trees") return r.trees;
+            if(label === "Orchard hectares") return r.ha;
+            if(label === "Irrigated farms") return r.irrShare;
+            if(label === "Registered orchards") return r.n;
+            return 0;
+          });
+          const winner = dir === "max" ? raw.indexOf(Math.max(...raw))
+                       : dir === "min" ? raw.indexOf(Math.min(...raw)) : -1;
+          return `<tr><td><b>${label}</b></td>${rows.map((r,i) =>
+            `<td class="n">${fn(r)}${i === winner ? ' <span class="tag g">best</span>' : ""}</td>`).join("")}</tr>`;
+        }).join("") + "</tbody>";
+
+      const topKg = rows.slice().sort((a,b) => b.kg - a.kg)[0];
+      const topNeed = rows.slice().sort((a,b) => b.score - a.score)[0];
+      const spread = (Math.max(...rows.map(r => r.perTree)) - Math.min(...rows.map(r => r.perTree))).toFixed(1);
+      document.getElementById("cmpVerdict").innerHTML =
+        `<p class="note"><b>${topKg.ward}</b> carries the most volume of those selected (${St.fmt(topKg.kg)} kg).
+         <b>${topNeed.ward}</b> scores highest on need (${topNeed.score}) and would gain most from ${topNeed.action.toLowerCase()}.
+         Yield per tree varies by ${spread} kg across these wards, which is the gap extension work is meant to close.</p>`;
+    };
+
+    pick.addEventListener("change", e => {
+      const boxes = [...pick.querySelectorAll("input:checked")];
+      if(boxes.length > 6){ e.target.checked = false; ui.toast("Six wards is the maximum for one comparison"); }
+      paint();
+    });
+    const set = names => {
+      pick.querySelectorAll("input").forEach(i => i.checked = names.includes(i.value));
+      paint();
+    };
+    document.getElementById("cmpTop").onclick  = () => set(St.activeWards().sort((a,b) => b.kg - a.kg).slice(0,3).map(w => w.ward));
+    document.getElementById("cmpNeed").onclick = () => set(St.priorityRows().slice(0,3).map(w => w.ward));
+    document.getElementById("cmpClear").onclick = () => set([]);
+    paint();
   }
 
   function wireWardTable(ui){
@@ -239,5 +398,5 @@ window.PM = window.PM || {};
     paint();
   }
 
-  PM.county = { views:{ c_over:overview, c_ward:wards, c_fore:forecast, c_surv:surveillance, c_plan:planning, c_rep:reports }, wire };
+  PM.county = { views:{ c_over:overview, c_ward:wards, c_comp:compare, c_fore:forecast, c_surv:surveillance, c_plan:planning, c_rep:reports }, wire };
 })();

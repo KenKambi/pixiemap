@@ -54,13 +54,23 @@ window.PM = window.PM || {};
 
   /* ---------- crop diagnosis ---------- */
   async function diagnose({ description, file, ward }){
-    // 1. serverless (image sent as base64 data URL)
+    let serverError = null;
+
+    // 1. serverless — the photo is downscaled first, because a raw phone
+    //    picture is several megabytes and base64 makes it a third bigger again
     try {
-      const image = file ? await toDataURL(file) : null;
-      const data = await postJSON(PM.CONFIG.api.diagnose, { description, image, ward });
-      if(data && data.result) return { ...parseJSON(data.result), via:"serverless" };
-      if(data && data.error) throw new Error(data.error);
-    } catch(e){ /* fall through */ }
+      const image = file ? await shrink(file) : null;
+      const res = await fetch(PM.CONFIG.api.diagnose, {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ description, image, ward })
+      });
+      const data = await res.json().catch(() => ({}));
+      if(res.ok && data.result) return { ...parseJSON(data.result), via:"serverless", model:data.model };
+      serverError = data.error || ("HTTP " + res.status);
+      if(data.tried) console.warn("diagnose attempts:", data.tried);
+    } catch(e){
+      serverError = (e && e.message) || "network error";
+    }
 
     // 2. sandbox bridge
     const b = await getBridge();
@@ -76,7 +86,28 @@ window.PM = window.PM || {};
       const r = await b.json(prompt, opts);
       return { ...r, via:"bridge" };
     }
-    return { offline:true };
+    return { offline:true, error: serverError };
+  }
+
+  /* downscale to at most 1024 px on the long edge, JPEG quality 0.8 */
+  function shrink(file, max){
+    max = max || 1024;
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * scale);
+        c.height = Math.round(img.naturalHeight * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        try { resolve(c.toDataURL("image/jpeg", 0.8)); }
+        catch(e){ toDataURL(file).then(resolve); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); toDataURL(file).then(resolve); };
+      img.src = url;
+    });
   }
 
   const toDataURL = file => new Promise((res, rej) => {
@@ -100,5 +131,5 @@ window.PM = window.PM || {};
       .replace(/\[(.+?)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   }
 
-  PM.ai = { chat, diagnose, md };
+  PM.ai = { chat, diagnose, md, shrink };
 })();
